@@ -101,7 +101,7 @@ def parse_wb_search_position(art_list, search_list):
             driver.close()
             break
          except ValueError:
-            print('error')
+            print('good not found')
             elem = driver.find_element(by='css selector', value='.pagination-next')
             elem.click()
             pass
