@@ -87,6 +87,7 @@ def parse_wb_search_position(art_list, search_list):
                current_scroll_position += speed
                driver.execute_script("window.scrollTo(0, {});".format(current_scroll_position))
                new_height = driver.execute_script("return document.body.scrollHeight")
+
             htmlpage = BS(driver.page_source, 'html.parser')
             for soup_object in htmlpage.select('.product-card-list > div > div > a'):
                urls_list.append(soup_object['href'])
@@ -102,7 +103,26 @@ def parse_wb_search_position(art_list, search_list):
             break
          except ValueError:
             print('error')
-            elem = driver.find_element(by='css selector', value='.pagination-next')
+            while True:
+               try:
+                  elem = driver.find_element(by='css selector', value='.pagination-next')
+                  break
+               except selenium.common.exceptions.NoSuchElementException:
+                  while True:
+                     try:
+                        new_height, current_scroll_position, speed = 1, 0, 35
+                        while current_scroll_position <= new_height:
+                           driver.refresh()
+                           current_scroll_position += speed
+                           driver.execute_script("window.scrollTo(0, {});".format(current_scroll_position))
+                           new_height = driver.execute_script("return document.body.scrollHeight")
+                        break
+                     except selenium.common.exceptions.WebDriverException:
+                        pass
+                     pass
+
+
+
             elem.click()
             pass
       else:
