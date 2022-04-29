@@ -19,20 +19,8 @@ date_dict = {1: 'R', 2: 'X', 3: 'AD', 4: 'AJ', 5: 'AP', 6: 'AV', 7: 'BB',
 sa = gspread.service_account('service_account.json')
 sh = sa.open('testing')
 wks = sh.worksheet('sheet')
-total = wks.row_count
-articles = wks.get('H3:H' + str(total))
-search_data = wks.get('F3:F' + str(total))
-search_list = []
-for value in search_data:
-    try:
-        text = value[0].split()
-        text = ' '.join(text)
-        search_list.append(re.sub(r'[\s]', '+', text))
-    except IndexError:
-        search_list.append('none')
-art_list = []
-for art in articles:
-    art_list.append(art[0])
+
+
 
 # options, binary_location = r'path\to\firefox.exe'
 firefox_options = Options()
@@ -41,6 +29,31 @@ firefox_options.headless = False
 
 
 # functions
+def get_row_content_from_google_sheet(worksheet, row_letter: str, range_start: int, range_end: int, is_search_row:bool=False) -> list:
+    total = wks.row_count
+    if len(row_letter) < 3 and row_letter.isalpha():
+        row_letter = row_letter.capitalize()
+    else:
+        raise ValueError('This is not a valid letter')
+    if range_start < 3:
+        range_start = 3
+    if range_end > total:
+        range_end = total
+    range_string = f'{row_letter}{range_start}:{row_letter}{range_end}'
+    row_list = worksheet.get(range_string)
+    if is_search_row:
+        row_content = []
+        for value in row_list:
+            try:
+                text = value[0].split()
+                text = ' '.join(text)
+                row_content.append(re.sub(r'[\s]', '+', text))
+            except IndexError:
+                row_content.append('none')
+        else:
+            return  row_content
+    row_content = [item for sublist in row_list for item in sublist]
+    return row_content
 
 def get_html_for_card_parse(url):
     driver = webdriver.Firefox(options=firefox_options)
@@ -59,8 +72,10 @@ def scroll_page(driver, speed=35):
 
 
 
-def parse_wb_search_position(art_list, search_list):
+def parse_wb_search_position(range_start:int, range_end:int):
     position_list = []
+    search_list = get_row_content_from_google_sheet(wks, 'F', range_start, range_end, is_search_row=True)
+    art_list = get_row_content_from_google_sheet(wks, 'H', range_start, range_end, is_search_row=False)
 
     for table_position in range(len(search_list)):
         print(position_list)
@@ -115,11 +130,12 @@ def parse_wb_search_position(art_list, search_list):
         else:
             position_list.append(['1000+'])
     else:
-        placeholder = date_dict.get(cur_day) + '3:' + date_dict.get(cur_day) + str(total)
+        placeholder = f'{date_dict.get(cur_day)}{range_start}:{date_dict.get(cur_day)}{range_end}'
         wks.update(placeholder, position_list)
 
 
-def parse_wb_reviews_and_score(art_list):
+def parse_wb_reviews_and_score(range_start: int, range_end: int):
+    art_list = get_row_content_from_google_sheet(wks,'H',range_start, range_end)
     review_count_list = []
     score_list = []
     for art in art_list:
@@ -160,16 +176,14 @@ def parse_wb_reviews_and_score(art_list):
                         break
                     except selenium.common.exceptions.WebDriverException:
                         pass
-
         score_cell = []
         score_cell.append(score)
         score_list.append(score_cell)
     else:
-        wks.update('M3:M' + str(total), review_count_list)
-        wks.update('L3:L' + str(total), score_list)
+        wks.update(f'M{range_start}:M{range_end}', review_count_list)
+        wks.update(f'L{range_start}:L{range_end}', score_list)
 
 
-parse_wb_search_position(art_list, search_list)
-# if __name__ == 'main':
-#    parse_wb_reviews_and_score(art_list)
-#    parse_wb_search_position(art_list,search_list)
+
+
+
