@@ -70,8 +70,6 @@ def scroll_page(driver, speed=35):
         driver.execute_script("window.scrollTo(0, {});".format(current_scroll_position))
         new_height = driver.execute_script("return document.body.scrollHeight")
 
-
-
 def parse_wb_search_position(range_start:int, range_end:int):
     position_list = []
     search_list = get_row_content_from_google_sheet(wks, 'F', range_start, range_end, is_search_row=True)
