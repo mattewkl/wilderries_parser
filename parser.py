@@ -1,4 +1,4 @@
-
+import itertools
 import re
 from datetime import datetime
 import selenium.common.exceptions
@@ -20,13 +20,10 @@ sa = gspread.service_account('service_account.json')
 sh = sa.open('testing')
 wks = sh.worksheet('sheet')
 
-
-
 # options, binary_location = r'path\to\firefox.exe'
 firefox_options = Options()
 firefox_options.binary_location = r'C:\Program Files\Mozilla Firefox\firefox.exe'
 firefox_options.headless = False
-
 
 # functions
 def get_row_content_from_google_sheet(worksheet, row_letter: str, range_start: int, range_end: int, is_search_row:bool=False) -> list:
@@ -60,8 +57,11 @@ def get_html_for_card_parse(url):
     driver.get(url)
     driver.execute_script('window.scrollTo(0,1000)')
     sleep(5)
+    # page sourse в переменную
     return driver.page_source, driver.quit()
 
+def update_row(worksheet_object, list_of_lists:list, range:str):
+    worksheet_object.update(range, list_of_lists)
 
 def scroll_page(driver, speed=35):
     current_scroll_position, new_height = 0, 1
@@ -129,8 +129,7 @@ def parse_wb_search_position(range_start:int, range_end:int):
             position_list.append(['1000+'])
     else:
         placeholder = f'{date_dict.get(cur_day)}{range_start}:{date_dict.get(cur_day)}{range_end}'
-        wks.update(placeholder, position_list)
-
+        return {'range': placeholder, 'list': position_list}
 
 def parse_wb_reviews_and_score(range_start: int, range_end: int):
     art_list = get_row_content_from_google_sheet(wks,'H',range_start, range_end)
@@ -178,10 +177,26 @@ def parse_wb_reviews_and_score(range_start: int, range_end: int):
         score_cell.append(score)
         score_list.append(score_cell)
     else:
-        wks.update(f'M{range_start}:M{range_end}', review_count_list)
-        wks.update(f'L{range_start}:L{range_end}', score_list)
+        return {'reviews': review_count_list, 'score': score_list, 'score_range':f'L{range_start}:L{range_end}', 'reviews_range': f'M{range_start}:M{range_end}'  }
 
-
-
-
-
+if __name__ == "__main__":
+    while True:
+        x = input('Какую часть вы хотите спарсить? 1) Отзывы и рейтинг товаров  2) На какой странице они находятся в поиске.')
+        if x == '1':
+            range_start = int(input('Введите начало диапазона парсинга'))
+            range_end = int(input('Введите конец диапазона парсинга'))
+            parse_results = parse_wb_reviews_and_score(range_start, range_end)
+            update_row(wks,parse_results['reviews'],parse_results['reviews_range'])
+            update_row(wks, parse_results['reviews'], parse_results['reviews_range'])
+            print('Работа завершена.')
+            break
+        elif x == '2':
+            range_start = int(input('Введите начало диапазона парсинга'))
+            range_end = int(input('Введите конец диапазона парсинга'))
+            parse_results = parse_wb_search_position(range_start, range_end)
+            update_row(wks, parse_results['list'], parse_results['range'])
+            print('Работа завершена.')
+            break
+        else:
+            print('Ошибка ввода, введите 1 цифру без пробелов.')
+            pass
